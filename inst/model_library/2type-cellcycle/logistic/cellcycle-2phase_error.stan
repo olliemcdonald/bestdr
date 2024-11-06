@@ -106,7 +106,7 @@ data{
   real prior_mu_d_g2_h;            // slope at inflection point
   real<lower=0> prior_s_d_g2_h;
   
-  
+  real<lower=0> prior_mu_obs_err;
   real<lower=0> prior_s_obs_err;  // scale parameter for prior distribution of error
 
 }
@@ -193,7 +193,7 @@ model{
   d_g2_50 ~ normal(prior_mu_d_g2_50, prior_s_d_g2_50);
   d_g2_h ~ normal(prior_mu_d_g2_h, prior_s_d_g2_h);
   
-  obs_err ~ normal(0, prior_s_obs_err);
+  obs_err ~ normal(prior_mu_obs_err, prior_s_obs_err);
   
   { // block to make these variables local
     array[nc, n_dt_unique] matrix[ntypes,ntypes] m_t; //fisrt moment matrices

@@ -64,11 +64,29 @@ data{
   matrix<lower=0>[nevents,ntypes] e_mat; //birth events matrix
   array[nevents] int<lower=0> p_vec; //parents for each birth event
   array[N] int<lower=0> times_idx; //index of the duration of each run
-  array[n_dt_unique] real<lower=0> dt; //the actual inter_event times
+  array[n_dt_unique] real dt; //the actual inter_event times
 
   array[N] int<lower=0> c_idx;      // index (int) of each concentration
   int<lower=0> nc;            // number of unique doses
   array[nc] real conc;              // value of each concentration
+
+  real prior_mu_u_g1_i;            // mean for prior distribution of bi (right asymptote)
+  real<lower=0> prior_s_u_g1_i;    // standard deviation for prior distribution of bi
+  real prior_mu_u_g1_delta;            // left asymptote
+  real<lower=0> prior_s_u_g1_delta;    
+  real prior_mu_u_g1_50;           // concentration at midpoint / inflection point
+  real<lower=0> prior_s_u_g1_50;   
+  real prior_mu_u_g1_h;            // slope at inflection point
+  real<lower=0> prior_s_u_g1_h;
+
+  real prior_mu_d_g1_0;            // mean for prior distribution of bi (right asymptote)
+  real<lower=0> prior_s_d_g1_0;    // standard deviation for prior distribution of bi
+  real prior_mu_d_g1_delta;            // left asymptote
+  real<lower=0> prior_s_d_g1_delta;    
+  real prior_mu_d_g1_50;           // concentration at midpoint / inflection point
+  real<lower=0> prior_s_d_g1_50;   
+  real prior_mu_d_g1_h;            // slope at inflection point
+  real<lower=0> prior_s_d_g1_h;
 
   real prior_mu_u_g2_i;            // mean for prior distribution of bi (right asymptote)
   real<lower=0> prior_s_u_g2_i;    // standard deviation for prior distribution of bi
@@ -88,10 +106,7 @@ data{
   real prior_mu_d_g2_h;            // slope at inflection point
   real<lower=0> prior_s_d_g2_h;
   
-  real prior_mu_u_g1;
-  real<lower=0> prior_s_u_g1;
-  real prior_mu_d_g1;
-  real<lower=0> prior_s_d_g1;
+  matrix<lower=-0.5, upper=0.5>[N,ntypes] count_err;  // To account for rounding to nearest cell
 
 }
 transformed data{
@@ -107,6 +122,16 @@ transformed data{
   init_state = append_row(m_init,d_init);
 }
 parameters{
+  real<lower=0> u_g1_i;
+  real<lower=0> u_g1_delta;
+  real u_g1_50;
+  real<lower=0> u_g1_h;
+
+  real<lower=0> d_g1_0;
+  real<lower=0> d_g1_delta;
+  real d_g1_50;
+  real<lower=0> d_g1_h;
+  
   real<lower=0> u_g2_i;
   real<lower=0> u_g2_delta;
   real u_g2_50;
@@ -117,16 +142,10 @@ parameters{
   real d_g2_50;
   real<lower=0> d_g2_h;
   
-  real<lower=0> u_g1;
-  real<lower=0> d_g1;
-
-  matrix<lower=-0.5, upper=0.5>[N,ntypes] count_err;  // To account for rounding to nearest cell
 }
 transformed parameters{
-  // To account for rounding to nearest cell
   matrix[N,ntypes] z;
   array[nc, n_dt_unique] vector[ntypes*ntypes + ntypes*ntypes*ntypes] moments; //raw single-ancestor moments vector evolving over time
-
   // True value is sum of rounded value (data) and roundoff error
   z = count + count_err;
 
@@ -134,17 +153,18 @@ transformed parameters{
     matrix[nevents,ntypes] r_mat;
     for(c in 1:nc){
       r_mat = rep_matrix(0, nevents,ntypes);
-  
-      r_mat[1, p_vec[1]] = u_g1;
-      r_mat[2, p_vec[2]] = d_g1;
 
       if(conc[c] == negative_infinity())
       {
+        r_mat[1, p_vec[1]] = u_g1_i + u_g1_delta;
+        r_mat[2, p_vec[2]] = d_g1_0;
         r_mat[3, p_vec[3]] = u_g2_i + u_g2_delta;
         r_mat[4, p_vec[4]] = d_g2_0;
       }
       else
       {
+        r_mat[1, p_vec[1]] = u_g1_i + u_g1_delta / (1 + exp(u_g1_h * (conc[c] - u_g1_50)));
+        r_mat[2, p_vec[2]] = d_g1_0 + d_g1_delta - d_g1_delta / (1 + exp(d_g1_h * (conc[c] - d_g1_50)));
         r_mat[3, p_vec[3]] = u_g2_i + u_g2_delta / (1 + exp(u_g2_h * (conc[c] - u_g2_50)));
         r_mat[4, p_vec[4]] = d_g2_0 + d_g2_delta - d_g2_delta / (1 + exp(d_g2_h * (conc[c] - d_g2_50)));
       }
@@ -154,6 +174,16 @@ transformed parameters{
   }
 }
 model{
+  u_g1_i ~ normal(prior_mu_u_g1_i, prior_s_u_g1_i);
+  u_g1_delta ~ normal(prior_mu_u_g1_delta, prior_s_u_g1_delta);
+  u_g1_50 ~ normal(prior_mu_u_g1_50, prior_s_u_g1_50);
+  u_g1_h ~ normal(prior_mu_u_g1_h, prior_s_u_g1_h);
+
+  d_g1_0 ~ normal(prior_mu_d_g1_0, prior_s_d_g1_0);
+  d_g1_delta ~ normal(prior_mu_d_g1_delta, prior_s_d_g1_delta);
+  d_g1_50 ~ normal(prior_mu_d_g1_50, prior_s_d_g1_50);
+  d_g1_h ~ normal(prior_mu_d_g1_h, prior_s_d_g1_h);
+  
   u_g2_i ~ normal(prior_mu_u_g2_i, prior_s_u_g2_i);
   u_g2_delta ~ normal(prior_mu_u_g2_delta, prior_s_u_g2_delta);
   u_g2_50 ~ normal(prior_mu_u_g2_50, prior_s_u_g2_50);
@@ -163,12 +193,9 @@ model{
   d_g2_delta ~ normal(prior_mu_d_g2_delta, prior_s_d_g2_delta);
   d_g2_50 ~ normal(prior_mu_d_g2_50, prior_s_d_g2_50);
   d_g2_h ~ normal(prior_mu_d_g2_h, prior_s_d_g2_h);
-  
-  u_g1 ~ normal(prior_mu_u_g1, prior_s_u_g1);
-  d_g1 ~ normal(prior_mu_d_g1, prior_s_d_g1);
-  
+    
   { // block to make these variables local
-    array[nc, n_dt_unique] matrix[ntypes,ntypes] m_t; //first moment matrices
+    array[nc, n_dt_unique] matrix[ntypes,ntypes] m_t; //fisrt moment matrices
     array[nc, n_dt_unique] matrix[ntypes,ntypes*ntypes] d_t; //second moments indexing goes (j,k,i)
     vector[ntypes] mu_t; //mean vectors for each datapoint
     matrix[ntypes,ntypes] sigma_t; //covariance matrices for each datapoint
@@ -197,48 +224,9 @@ model{
         }
       }
   
+      // Error scales with the average number
       z[n] ~ multi_normal(mu_t, sigma_t);
-    }
-  }
-}
-/*
-generated quantities{
-  array[N] real log_lik;
-  
-  { // block to make these variables local
-    array[nc, n_dt_unique] matrix[ntypes,ntypes] m_t; //first moment matrices
-    array[nc, n_dt_unique] matrix[ntypes,ntypes*ntypes] d_t; //second moments indexing goes (j,k,i)
-    vector[ntypes] mu_t; //mean vectors for each datapoint
-    matrix[ntypes,ntypes] sigma_t; //covariance matrices for each datapoint
-    matrix[ntypes,ntypes] temp; //for copying stuff
-    
-    for(c in 1:nc){
-      for(ti in 1:n_dt_unique){
-        m_t[c,ti] = to_matrix(head(moments[c,ti],ntypes*ntypes), ntypes,ntypes);
-        d_t[c,ti] = to_matrix(segment(moments[c,ti],ntypes*ntypes+1, ntypes*ntypes*ntypes),ntypes,ntypes*ntypes);
-      }
-    }
-
-
-    for(n in 1:N){
-      int ti = times_idx[n];
-      int c = c_idx[n];
-
-      //plug in the inital conditions
-      mu_t = (m_t[c,ti]')*to_vector(count_prev[n]);
-      temp = to_matrix(count_prev[n]*d_t[c,ti],ntypes,ntypes);
-      for(i in 1:ntypes){
-        sigma_t[i,i] = temp[i,i] - count_prev[n]*(col(m_t[c,ti],i).*col(m_t[c,ti],i)); //subtract to get covariance from 2nd moment
-        for(j in 1:ntypes){
-          sigma_t[i,j] = temp[i,j] - count_prev[n]*(col(m_t[c,ti],i).*col(m_t[c,ti],j)); //subtract to get covariance from 2nd moment
-          sigma_t[j,i] = sigma_t[i,j];
-        }
-      }
-  
-      log_lik[n] = multi_normal_lpdf(z[n] | mu_t, sigma_t);
       
     }
   }
-  
 }
-*/
