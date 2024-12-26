@@ -1,8 +1,7 @@
 # Ignore all
-*
 
-# Unignore all with extensions
-!*.*
+# Ignore R project
+*.Rproj
 
 # ignore PDF files
 *.pdf

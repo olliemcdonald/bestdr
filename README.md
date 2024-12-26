@@ -1,3 +1,7 @@
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/olliemcdonald/bestdr/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/olliemcdonald/bestdr/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 # Bayesian Esitmation of Stochastic processes for Dose-Response (BESTDR)
 
 BESTDR is an R package that uses Stan to estimate parameters for continuous time Markov

@@ -1,0 +1,26 @@
+Package: bestdr
+Type: Package
+Title: Bayesian Continuous Time Markov Branching Process Inference for Dose-Response Modeling
+Version: 0.1.0
+Authors@R: 
+    person("Thomas", "McDonald", , "mcdonald@ds.dfci.harvard.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "https://orcid.org/0000-0002-5272-0187"))
+Maintainer: Thomas O McDonald <mcdonald@ds.dfci.harvard.edu>
+Description: Companion package to the manuscript ""
+License: `use_gpl3_license()`
+Encoding: UTF-8
+LazyData: true
+Depends:
+    cmdstanr
+Imports:
+    stringi,
+    dplyr,
+    tidyr,
+    magrittr,
+    ggplot2
+Suggests:
+    estipop,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+RoxygenNote: 7.3.1
