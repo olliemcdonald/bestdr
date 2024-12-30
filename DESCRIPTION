@@ -7,7 +7,7 @@ Authors@R:
            comment = c(ORCID = "https://orcid.org/0000-0002-5272-0187"))
 Maintainer: Thomas O McDonald <mcdonald@ds.dfci.harvard.edu>
 Description: Companion package to the manuscript "BESTDR: Bayesian
-quantification of mechanism-specific drug response in cell culture"
+    quantification of mechanism-specific drug response in cell culture"
 License: `use_gpl3_license()`
 Encoding: UTF-8
 LazyData: true
@@ -23,5 +23,8 @@ Suggests:
     estipop,
     knitr,
     rmarkdown
+Remotes:
+    stan-dev/cmdstanr
+SystemRequirements: CmdStan >= 2.34.0
 VignetteBuilder: knitr
 RoxygenNote: 7.3.1
