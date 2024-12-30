@@ -3,7 +3,7 @@ title: "Creating Custom Models"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Creating Custom Models}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
 
