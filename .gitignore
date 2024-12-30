@@ -1,3 +1,9 @@
+# Ignore all
+*
+
+# Unignore all with extensions
+!*.*
+
 # Ignore R project
 *.Rproj
 .Rproj.user/**
