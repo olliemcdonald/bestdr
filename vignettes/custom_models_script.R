@@ -1,51 +1,6 @@
----
-title: "Creating Custom Models"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Creating Custom Models}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
+# Model 1 - Simple Birth Death Process -----------------------------------------
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  warning = FALSE,
-  message = FALSE,
-  fig.width=7,
-  fig.asp = 0.8,
-  cache = TRUE,
-  comment = "#>"
-)
-```
-
-```{r setup}
-library(bestdr)
-library(tidyverse)
-```
-
-# Introduction
-
-BESTDR can create custom models where you can specify the mechanistic model that
-describes how each type reproduces, dies, transitions, etc. We specify each event
-as a transition where the parent, offspring, and concentration-response are
-all explicitly stated. Additionally we can include any parameter constraints,
-prior information, hierarchical variables and priors, as well as whether or not
-to include an error term. A couple steps and functions are required to go from model
-specification to creating the Stan file that can be compiled. We include helper
-functions to add data.
-
-This vignette will use the birth-death process as an example and increase the complexity
-of the modeling to account for a single concentration (no dose-response), a dose-response
-model, and a hierarchical dose-response model. We use the `estipop` library
-
-# Single-type birth-death process (no dose-response)
-
-We first simulate data from a single type birth-death process to estimate the birth
-and death rate without a dose-response model.
-
-```{r birthdeath-noDR}
-b <- 1
+b <- 0.5
 d <- 0.1
 
 N <- 10 # Number of samples
@@ -54,7 +9,7 @@ dt <- 0.1 # Time between measurements
 times <- seq(0, tot_time, dt)
 init_pop <- c(100) # Number of ancestors
 
-set.seed(90210)
+set.seed(8437)
 params <- c(b, d)
 model <- estipop::process_model(
   estipop::transition(rate = estipop::rate(params[1]), parent = 1, offspring = c(2)), # birth
@@ -62,25 +17,11 @@ model <- estipop::process_model(
 )
 dat <- estipop::branch(model, params, init_pop, times, N, silent = T)
 
-# Plot the longitudinal cell growth data
 dat %>% ggplot(aes(x = time, y = type1, group = rep)) +
   geom_line() +
   scale_y_log10()
-```
 
-We use the `process_model` function in BESTDR to put all the pieces of the model together.
-The required argument is a `bp_model` that lists the transitions that define the branching
-process model. A transition must have a parent, the offpsring vector, and can include the
-dose-response function. In the following example we allow the live cell to either split
-into 2 offspring (transition1 - called "birth") or it can die and beget 0 offspring
-(transition2 - called "death"). We explicitly set our priors for the "birth" and "death"
-rate as coming from a normal distribution with mean `mu_b` and standard deviation
-`s_b`. The brackets indicate that the standard deviation term is constrained to be
-positive. Additionally, we added that the birth and death rates are both constrainted to
-be positive as well since these represent rates and should not be less than 0. Finally we
-add that there is no observation error expected in the model.
 
-```{r birthdeath-modelsetup}
 model <- process_model(
   bp_model(transition(name = "birth", parent = 1, offspring = c(2)), # birth
            transition(name = "death", parent = 1, offspring = c(0))), # death
@@ -95,46 +36,24 @@ model <- process_model(
 mystancode <- create_stan_code(model)
 f2 <- write_stan_file(mystancode)
 stanmodel <- cmdstanr::cmdstan_model(f2, force_recompile = T)
-```
 
-To run the model, we create the Stan code from the information above using `create_stan_code`
-which parses the information from the model and inserts it into a template, but does not
-compile. We can write the code to a file with `write_stan_file` which defaults to a
-temporary directory, but can be set if additional modifications might be needed that are
-beyond the scope of simple functions (see the model library for some different changes).
-
-The data needs to be in the form of an R dataframe and contain the current and previous counts
-for all types as individual columns as well as a time variable that provides the time between
-observations. We call the modified dataset `dat_dt` in the following chunk:
-```{r birthdeath-databeforeandafter, warning=FALSE}
-head(dat)
 dat_dt <- dat %>% group_by(rep) %>%
   mutate(dt = time - lag(time),
          type1_prev = lag(type1)) %>%
   filter(!is.na(dt))
 dat_dt <- as.data.frame(dat_dt)
-head(dat_dt)
-```
 
-To attach the data, we need to specify the names of the variables for the time interval as
-well as the counts. The function `attach_data` allows us to specify this information and outputs
-the dataset that can be used for model fitting. Additionally we'll specify the priors for the
-parameters as well as the initialization function which are part of `cmdstanr`.
-
-```{r birthdeath-attachdata}
 data.list <- attach_data(model, dat_dt,
                          time_var = "dt",
                          count_vars = "type1",
                          prevcount_vars = "type1_prev")
 
-
 prior.list <- list(
   mu_b = 1,
   s_b = 0.3,
   mu_d = 1,
-  s_d = 0.5
+  s_d = 0.3
 )
-
 initfun <- function() {
   list(
     birth = runif(1, 0, 2),
@@ -142,22 +61,18 @@ initfun <- function() {
     count_err = runif(data.list$N, -0.5, 0.5)
   )
 }
-```
 
-Running the code is done using the sample function and provides posterior draws
-from the HMC sampler that we can compare to the original estimates.
-```{r birthdeath-runsampler, warning=FALSE, message=FALSE}
 model_posterior <- stanmodel$sample(
   data = c(data.list, prior.list),
   chains = 1,
   parallel_chains = 1,
   refresh = 0,
   init = initfun,
-  iter_warmup = 200,
-  iter_sampling = 200
+  iter_warmup = 500,
+  iter_sampling = 500
 )
 
-model_posterior$summary(variables = c("birth", "death"))
+model_posterior$summary()
 params_posterior <- model_posterior$draws(variables = c("birth", "death"), format = "df")
 
 true_data <- data.frame(stat = c("birth", "death"), value = c(b, d))
@@ -167,16 +82,19 @@ params_posterior %>%
   geom_density() +
   geom_vline(data = true_data, aes(xintercept = value))
 
-```
+# Model 2 - 2-type Birth-Death-Mutation ----------------------------------------
+# Type 1 parameters
+##  Birth - Constant
+##  Death - 4-parameter logistic
+##  Mutation - Constant
+# Type 2 parameters
+##  Birth - Constant
+##  Death - 4-parameter logistic
 
 
-# 2-type birth-death-mutation process
-We show an example from a multitype process with a concentration response model. The
-process is a 2-type process of "sensitive" and "resistant" cells where the increase
-in concentration of the drug leads to an increase in the death rate. The birth rate
-of both types are the same and the mutation rate is the same.
-
-```{r resistant-setup, warning=FALSE, message=FALSE}
+## Generate data -------------------------------------------------
+# Generate Parameters:
+# Generate curve from 4-parameter logistic function for birth and death
 b <- 0.10
 
 d0_1 <- 0.005
@@ -192,8 +110,15 @@ dh_2 <- 0.5
 dd_2 <- di_2 - d0_2
 
 u_12 <- 0.005
-```
-```{r resistant-doseresponse-plot, warning=FALSE, message=FALSE, echo=FALSE}
+
+param_truth <- data.frame(
+  birth = b,
+  d0_1 = d0_1, d50_1 = d50_1, dh_1 = dh_1, dd_1 = dd_1,
+  d0_2 = d0_2, d50_2 = d50_2, dh_2 = dh_2, dd_2 = dd_2,
+  u_12 = u_12
+)
+print(param_truth)
+
 concentrations <- c(0, 10^seq(-4, 4, 0.1))
 log_conc <- log(concentrations)
 d_curve <- function(lc, d0, dd, dh, d50) d0 + dd - dd / (1 + exp(dh * (lc - d50)))
@@ -206,16 +131,12 @@ data.frame(concentrations, b = b, d1 = d1_truth, d2 = d2_truth, u_12 = u_12) %>%
   ggplot(aes(x = concentrations, y = value, color = stat)) +
   geom_line() +
   scale_x_log10()
-```
-
-We simulate the process for each of the concentrations for 3 replicates.
-```{r resistant-simulation, warning=FALSE, message=FALSE}
-d_curve <- function(lc, d0, dd, dh, d50) d0 + dd - dd / (1 + exp(dh * (lc - d50)))
 
 concentrations <- c(0, 10^seq(-4, 4, 1))
 log_conc <- log(concentrations)
 d1_truth <- d_curve(log_conc, d0_1, dd_1, dh_1, d50_1)
 d2_truth <- d_curve(log_conc, d0_2, dd_2, dh_2, d50_2)
+
 
 N <- 3 # Number of samples
 tot_time <- 3
@@ -232,7 +153,7 @@ for (i in seq_along(concentrations)) {
   model <- estipop::process_model(
     estipop::transition(rate = estipop::rate(params[1]), parent = 1, offspring = c(2, 0)), # 1 birth
     estipop::transition(rate = estipop::rate(params[2]), parent = 1, offspring = c(0, 0)), # 1 death
-    estipop::transition(rate = estipop::rate(params[3]), parent = 1, offspring = c(0, 1)), # mutation
+    estipop::transition(rate = estipop::rate(params[3]), parent = 1, offspring = c(0, 1)), # 1->2 mutation
     estipop::transition(rate = estipop::rate(params[4]), parent = 2, offspring = c(0, 2)), # 1 birth
     estipop::transition(rate = estipop::rate(params[5]), parent = 2, offspring = c(0, 0))  # 1 death
   )
@@ -243,15 +164,21 @@ for (i in seq_along(concentrations)) {
 }
 
 dat %>% pivot_longer(c(type1, type2), names_to = "type", values_to = "count") %>%
-  ggplot(aes(x = time, y = count, color = factor(concentration),
-             group = interaction(rep, factor(concentration)))) +
+  ggplot(aes(x = time, y = count, color = factor(concentration), group = interaction(rep, factor(concentration)))) +
   geom_line() +
   scale_color_manual(values = colorRampPalette(c("gold", "darkblue"))( 10 )) +
   facet_wrap(type ~ ., scales = "free_y")
-```
 
-Model Definition Block
-```{r resistant-procmodel, warning=FALSE, message=FALSE}
+dat_dr <- dat %>%
+  dplyr::group_by(rep, concentration) %>%
+  dplyr:: mutate(
+    dt = signif(time - dplyr::lag(time), 6),
+    type1_prev = lag(type1),
+    type2_prev = lag(type2)
+  ) %>% dplyr::filter(!is.na(dt))
+
+
+## Define model -------------------------------------------------
 model <- process_model(
   bp_model(transition(name = "birth_1", parent = 1, offspring = c(2, 0)),
            transition(name = "death_1", parent = 1, offspring = c(0, 0),
@@ -282,10 +209,13 @@ model <- process_model(
 mystancode <- create_stan_code(model)
 f2 <- write_stan_file(mystancode)
 stanmodel <- cmdstanr::cmdstan_model(f2, force_recompile = T)
-```
 
-The code can then be run by filling out the priors and sampling as below (not run):
-```{r resistant-run, warning=FALSE, message=FALSE, eval=FALSE}
+# Adding the data
+data.list <- attach_data(model, dat_dr,
+                         time_var = "dt",
+                         count_vars = c("type1", "type2"),
+                         prevcount_vars = c("type1_prev", "type2_prev"))
+
 prior.list <- list(
   mu_b1 = 0.1,
   s_b1 = 0.05,
@@ -311,26 +241,20 @@ prior.list <- list(
   s_dh_2 = 1
 )
 
-model_posterior <- stanmodel$sample(
-  data = c(data.list, prior.list),
-  chains = 1,
-  parallel_chains = 1,
-  refresh = 1,
+model_posterior <- stanmodel$optimize(
+  data = c(data.list, prior.list)
   #init = initfun,
-  iter_warmup = 500,
-  iter_sampling = 500
 )
 
 model_posterior$summary()
-params_posterior <- model_posterior$draws(variables = c("birth", "death"), format = "df")
-```
+param_truth
 
-Suppose we have data from multiple cell lines (or groups) and we wish to perform the same model
-with a group effect where we believe the birth rate and death curve for the first type have differences
-between the cell lines. We can include this effect by adding the "hierarchical" argument and specifying
-the variables that apply as in the following block:
+# Model 3 - 2-type Birth-Death-Mutation Hierarchical ---------------------------
+# Type 1 parameters
+##  Birth - Constant
+##  Death - 4-parameter logistic
+##  Mutation - Constant
 
-```{r resistant-hierarchical, warning=FALSE, message=FALSE, eval=FALSE}
 model <- process_model(
   bp_model(transition(name = "birth_1", parent = 1, offspring = c(2, 0)),
            transition(name = "death_1", parent = 1, offspring = c(0, 0),
@@ -370,26 +294,6 @@ model <- process_model(
   predictor_names = "x",
   observation_error = FALSE
 )
-```
-
-Note: For a 1-type birth-death process model, you currently need to specify a dose-response
-model for each parameter in a hierarchical component.
-Ex.
-```{r resistant-1typehier, warning=FALSE, message=FALSE, eval=FALSE}
-model <- process_model(
-  bp_model(transition(name = "birth", parent = 1, offspring = c(2), model = "birth ~ bi + db / (1 + exp(bh * (x - b50)))"), # birth
-           transition(name = "death", parent = 1, offspring = c(0), model = "death ~ ddeath")), # death
-  priors = c(
-    "bi ~ normal(prior_mu_bi, prior_s_bi[0,])",
-    "db ~ normal(prior_mu_db, prior_s_db[0,])",
-    "b50 ~ normal(prior_mu_b50, prior_s_b50[0,])",
-    "bh ~ normal(prior_mu_bh, prior_s_bh[0,])",
-    "ddeath ~ normal(d1, d2)",
-    "d1 ~ normal(prior_mu_d1, prior_s_d1)",
-    "d2 ~ normal(prior_mu_d2, prior_s_d2)"
-  ),
-  observation_error = FALSE,
-  predictor_names = "x",
-  hierarchical = "ddeath"
-)
-```
+mystancode <- create_stan_code(model)
+f2 <- write_stan_file(mystancode)
+stanmodel <- cmdstanr::cmdstan_model(f2, force_recompile = T)

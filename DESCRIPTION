@@ -6,7 +6,8 @@ Authors@R:
     person("Thomas", "McDonald", , "mcdonald@ds.dfci.harvard.edu", role = c("aut", "cre"),
            comment = c(ORCID = "https://orcid.org/0000-0002-5272-0187"))
 Maintainer: Thomas O McDonald <mcdonald@ds.dfci.harvard.edu>
-Description: Companion package to the manuscript ""
+Description: Companion package to the manuscript "BESTDR: Bayesian
+quantification of mechanism-specific drug response in cell culture"
 License: `use_gpl3_license()`
 Encoding: UTF-8
 LazyData: true
