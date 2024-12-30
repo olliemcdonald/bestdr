@@ -21,7 +21,10 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(bestdr)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
 library(cmdstanr)
 library(estipop)
 ```

@@ -16,6 +16,8 @@ new_transition <- function(name, parent, offspring, model) {
 
 #' validate_transition
 #' verifies the correctness of an object of class \code{transition}
+#' 
+#' @param trans_obj a transition object
 #'
 #' @return The \code{transition} object if it is valid, throws an error otherwise
 validate_transition <- function(trans_obj) {
@@ -56,9 +58,10 @@ transition <- function(name = NULL, parent, offspring, model=NULL) {
 
 #' constructor for object of class \code{bp_model}
 #'
-#' @param transition_list a list of transition objects
-#'
+#' @param ... a transition list structured as a vector of transitions
+#' 
 #' @return A new branching process model object
+#' 
 bp_model <- function(...) {
   pm <- list(transition_list = list(...))
   class(pm) <- "bp_model"
@@ -67,8 +70,18 @@ bp_model <- function(...) {
 
 #' validate_process_model
 #' verifies the correctness of an object of class \code{bp_model}
+#' 
+#' @param bp_model a bp_model object containing user-defined transitions
+#' @param parameter_constraints vector of bounds on the parameters
+#' @param priors vector of characters listing priors for any parameters
+#' @param predictor_names character vector for the name of the predictors used in the formulates (ex. x, c, concentration)
+#' @param observation_error logical to include error due to observation
+#' @param hierarchical vector of parameters that are random effects and have
+#'     hyperparameters
 #'
 #' @return The \code{process_model} object if it is valid, throws an error otherwise
+#' 
+#' 
 validate_process_model <- function(bp_model,
                                    parameter_constraints = NULL,
                                    priors = NULL,
@@ -120,8 +133,9 @@ validate_process_model <- function(bp_model,
 #' constructs and validates an object of class \code{process_model}
 #'
 #' @param bp_model a bp_model object containing user-defined transitions
-#' @param parameter_constriants vector of bounds on the parameters
+#' @param parameter_constraints vector of bounds on the parameters
 #' @param priors vector of characters listing priors for any parameters
+#' @param predictor_names character vector for the name of the predictors used in the formulates (ex. x, c, concentration)
 #' @param observation_error logical to include error due to observation
 #' @param hierarchical vector of parameters that are random effects and have
 #'     hyperparameters

@@ -22,6 +22,8 @@ attach_data(
 \item{dat}{data frame that contains counts for current and previous time and
 predictor variables}
 
+\item{time_var}{variable name used to designate the time}
+
 \item{count_vars}{character vector of column names in dat that are the
 current time object counts}
 

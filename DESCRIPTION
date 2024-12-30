@@ -14,13 +14,13 @@ LazyData: true
 Depends:
     cmdstanr
 Imports:
-    stringi,
+    stringi
+Suggests:
+    estipop,
     dplyr,
     tidyr,
     magrittr,
-    ggplot2
-Suggests:
-    estipop,
+    ggplot2,
     knitr,
     rmarkdown
 Remotes:

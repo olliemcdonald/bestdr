@@ -7,7 +7,7 @@
 bp_model(...)
 }
 \arguments{
-\item{transition_list}{a list of transition objects}
+\item{...}{a transition list structured as a vector of transitions}
 }
 \value{
 A new branching process model object

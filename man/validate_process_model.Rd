@@ -14,6 +14,20 @@ validate_process_model(
   hierarchical = NULL
 )
 }
+\arguments{
+\item{bp_model}{a bp_model object containing user-defined transitions}
+
+\item{parameter_constraints}{vector of bounds on the parameters}
+
+\item{priors}{vector of characters listing priors for any parameters}
+
+\item{predictor_names}{character vector for the name of the predictors used in the formulates (ex. x, c, concentration)}
+
+\item{observation_error}{logical to include error due to observation}
+
+\item{hierarchical}{vector of parameters that are random effects and have
+hyperparameters}
+}
 \value{
 The \code{process_model} object if it is valid, throws an error otherwise
 }

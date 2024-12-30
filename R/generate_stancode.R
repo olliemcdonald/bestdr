@@ -45,16 +45,23 @@ create_stan_code <- function(model) {
 
 }
 
-
+#' Create Stan parameter block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_parameter_block <- function(model) {
   paramtext <- paste(model$blocks$params$param_block, collapse = "\n")
   hierparamtext <- paste(model$blocks$priors$data_block[model$blocks$priors$hierarchical == TRUE], collapse = "\n")
   return(paste(paramtext, hierparamtext, sep = "\n"))
 }
 
-
-create_transparameter_block <- function(model){
-
+#' Create Stan transformed parameter block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
+create_transparameter_block <- function(model) {
   birthVar <- model$blocks$rate_model$rateNames[model$blocks$rate_model$bd == "b"]
   deathVar <- model$blocks$rate_model$rateNames[model$blocks$rate_model$bd == "d"]
 
@@ -64,19 +71,43 @@ create_transparameter_block <- function(model){
 
   paramDecl <- c(paste0(b_idx, " ", birthVar, ";"), paste0(d_idx, " ", deathVar, ";"))
   paramDecl <- ifelse(model$blocks$rate_model$rateNames == model$blocks$rate_model$RHS, "", paramDecl)
-  return(paste(paramDecl, collapse="\n"))
+  return(paste(paramDecl, collapse = "\n"))
 }
+
+#' Create Stan data block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_data_block <- function(model) {
   return(paste(model$blocks$priors$data_block[model$blocks$priors$hierarchical == FALSE], collapse = "\n"))
 }
+
+#' Create Stan priors block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_priors_block <- function(model) {
   return(paste(model$blocks$priors$model_block, collapse = "\n"))
 }
+
+#' Create Stan statistical model block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_statmodel_block <- function(model) {
   return(paste(model$blocks$rate_model$stan_block, collapse = "\n"))
 }
+
+#' Create Stan observed error chunk for model from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_error_block <- function(model) {
-  if(model$birthdeath){
+  if (model$birthdeath) {
     if (model$observation_error) {
       return(list(
         data_block = "\nreal<lower=0> prior_s_obs_err;\n",
@@ -92,7 +123,7 @@ create_stan_error_block <- function(model) {
         count_model_block = "\nz ~ normal(mu, sigma);\n"
       ))
     }
-  } else{
+  } else {
     if (model$observation_error) {
       return(list(
         data_block = "\nreal<lower=0> prior_s_obs_err;\n",
@@ -110,6 +141,12 @@ create_stan_error_block <- function(model) {
     }
   }
 }
+
+#' Create Stan mechanstic model block from parsed text
+#'
+#' @param model A bp model that has been processed and parsed
+#'
+#'
 create_stan_bdmodel_block <- function(model){
 
   birthVar <- model$blocks$rate_model$rateNames[model$blocks$rate_model$bd == "b"]

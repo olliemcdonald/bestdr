@@ -1,3 +1,8 @@
+#' Format the constraints from a processed model
+#'
+#' @param constraint a constraint on a parameter or data variable
+#' 
+#'
 format_constraint <- function(constraint) {
   constraint <- gsub(" ", "", constraint, fixed = TRUE)
   bounds <- stringi::stri_split(constraint, fixed = ",", simplify = T)
@@ -18,6 +23,11 @@ format_constraint <- function(constraint) {
   }
 }
 
+#' Separate the name of the variable from the constraint
+#'
+#' @param name_with_constraint a name and constraint text chunk
+#'
+#'
 separate_name_and_constraint <- function(name_with_constraint) {
   name <- gsub("\\[.*\\]", "", name_with_constraint)
   constraint <- stringi::stri_extract(name_with_constraint, regex = "(?<=\\[).*?(?=\\])")
@@ -27,9 +37,13 @@ separate_name_and_constraint <- function(name_with_constraint) {
   constraint <- format_constraint(constraint)
   return(list(name = name, constraint = constraint))
 }
-
-# Function to parse parameters and separate name and constraint
-# Requirement here to include all parameters and any possible constraints
+ 
+#' Function to parse parameters and separate name and constraint.
+#' Requirement here to include all parameters and any possible constraints
+#'
+#' @param parameters parameters block from a model
+#'
+#'
 parse_parameters <- function(parameters) {
   param_df <- data.frame(name = character(), param_block = character(), constraint = character())
   for (param in parameters) {
@@ -40,7 +54,12 @@ parse_parameters <- function(parameters) {
   return(param_df)
 }
 
-# Function to parse formula and extract parts
+#' Function to parse formula and extract parts
+#'
+#' @param formulas formulas from a model
+#' @param hierarchical hierarchical parameters from a model
+#'
+#'
 parse_priors <- function(formulas, hierarchical) {
   parsed_priors <- data.frame()
 
@@ -85,6 +104,12 @@ parse_priors <- function(formulas, hierarchical) {
   return(parsed_priors)
 }
 
+#' Function to parse a single formula formula and extract parts
+#'
+#' @param formula formula block
+#' @param predictor_names names of the predictor values (concentration, etc)
+#'
+#'
 parse_single_formula <- function(formula, predictor_names){
   varNames <- all.vars(formula) # parameter and variable names from formula
   varNames_wConstraints <- as.vector(stringi::stri_match_all(deparse(formula[[3]]), regex = "[A-Za-z0-9_\\.]+(?>\\[[^\\[\\])]*,[^\\[\\])]*\\])", omit_no_match = TRUE)[[1]])
@@ -113,12 +138,23 @@ parse_single_formula <- function(formula, predictor_names){
               varNamesRHS=varNamesRHS))
 }
 
+#' Function to parse formula when there is no model
+#'
+#' @param formula formula block
+#' @param rateName string name to identify the rate
+#'
+#'
 parse_single_formula_nomodel <- function(formula, rateName){
   return(list(updateRHS=str2lang(rateName),
               rateNamesLHS=rateName,
               varNamesRHS=rateName))
 }
 
+#' Function to parse all formulas from a model
+#'
+#' @param model formula block
+#'
+#'
 parse_formulas <- function(model) {
   formula_df <- data.frame()
   for (tr in model$transition_list) {
@@ -158,6 +194,12 @@ parse_formulas <- function(model) {
   return(formula_df)
 }
 
+#' Function to merge all constraints from the blocks of the model definition
+#'
+#' @param params_from_constraints all parameters pulled from the constraints arguments
+#' @param params_from_model all parameters pulled from the model arguments
+#'
+#'
 merge_constraints <- function(params_from_constraints, params_from_model) {
   # Merge parameters from model and constraints
   # Parameters from Constraints will supercede those from the model, but need to merge
@@ -188,6 +230,11 @@ merge_constraints <- function(params_from_constraints, params_from_model) {
   return(all_params[, c("name", "constraint", "param_block")])
 }
 
+#' Function to build the parants and list of events into a vector and matrix
+#'
+#' @param model bpmodel structure
+#'
+#'
 build_parents_and_eventmatrix <- function(model) {
   model_deets <- data.frame()
   for (tr in model$transition_list) {
@@ -200,10 +247,13 @@ build_parents_and_eventmatrix <- function(model) {
   )
 }
 
+#' Function to parse through the model and get the required pieces to construct
+#' the stan code
+#'
+#' @param model model structure
+#'
+#'
 parse_model <- function(model) {
-  # Function to parse through the model and get the required pieces to construct
-  # the stan code
-
   # Priors
   priors_blocks <- parse_priors(model$priors, model$hierarchical)
 

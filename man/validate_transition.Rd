@@ -7,6 +7,9 @@ verifies the correctness of an object of class \code{transition}}
 \usage{
 validate_transition(trans_obj)
 }
+\arguments{
+\item{trans_obj}{a transition object}
+}
 \value{
 The \code{transition} object if it is valid, throws an error otherwise
 }

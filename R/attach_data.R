@@ -8,6 +8,7 @@
 #' frame defined by the user.
 #'
 #' @param model bp_model defined by the user
+#' @param time_var variable name used to designate the time
 #' @param dat data frame that contains counts for current and previous time and
 #'      predictor variables
 #' @param count_vars character vector of column names in dat that are the
