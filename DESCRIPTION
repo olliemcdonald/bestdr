@@ -24,7 +24,7 @@ Suggests:
     knitr,
     rmarkdown
 Remotes:
-    stan-dev/cmdstanr
+    stan-dev/cmdstanr,
     Michorlab/estipop
 SystemRequirements: CmdStan >= 2.34.0
 VignetteBuilder: knitr
